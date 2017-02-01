@@ -39,7 +39,7 @@ write(date('Y-m-d H:i:s', time()) . " - 服务启动...\n");
 $serv = new swoole_server('0.0.0.0', 6882, SWOOLE_PROCESS, SWOOLE_SOCK_UDP);
 $serv->set(array(
     'worker_num' => WORKER_NUM,
-    'daemonize' => true,
+    'daemonize' => false,
     'max_request' => MAX_REQUEST,
     'dispatch_mode' => 2,
     'log_file' => ABSPATH . '/error.log'
