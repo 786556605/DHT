@@ -39,14 +39,14 @@ write(date('Y-m-d H:i:s', time()) . " - 服务启动...\n");
 $serv = new swoole_server('0.0.0.0', 6882, SWOOLE_PROCESS, SWOOLE_SOCK_UDP);
 $serv->set(array(
     'worker_num' => WORKER_NUM,
-    'daemonize' => true,
+    'daemonize' => false,
     'max_request' => MAX_REQUEST,
     'dispatch_mode' => 2,
-    'log_file' => ABSPATH . 'error.log'
+    'log_file' => ABSPATH . '/error.log'
 ));
 $serv->on('WorkerStart', function($serv, $worker_id){
     // 添加一个定时器, 使服务器定时寻找节点
-    $serv->addtimer(AUTO_FIND_TIME);
+    swoole_timer_tick(AUTO_FIND_TIME, 'timer');
     auto_find_node();
 });
 $serv->on('Receive', function($serv, $fd, $from_id, $data){
@@ -56,9 +56,15 @@ $serv->on('Receive', function($serv, $fd, $from_id, $data){
 
     // 对数据进行解码
     $msg = Base::decode($data);
+    if(empty($msg['y'])){
+        return false;
+    }
 
     // 获取对端链接信息, udp链接需要加上$from_id参数
     $fdinfo = $serv->connection_info($fd, $from_id);
+    if(empty($fdinfo['remote_ip'])){
+        return false;
+    }
 
     // 对接收到的数据进行类型判断
     if($msg['y'] == 'r'){
@@ -73,7 +79,7 @@ $serv->on('Receive', function($serv, $fd, $from_id, $data){
     	return false;
     }
 });
-$serv->on('Timer', function($interval){
+function timer(){
     for($i=0; $i<MAX_PROCESS; $i++){
         $process = new swoole_process(function(){
             auto_find_node();
@@ -82,7 +88,7 @@ $serv->on('Timer', function($interval){
         $threads[$pid] = $process;
         swoole_process::wait();
     }
-});
+}
 $serv->start();
 
 /**
